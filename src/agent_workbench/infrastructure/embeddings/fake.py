@@ -36,18 +36,27 @@ class FakeEmbeddings:
         return self._dim
 
     def _embed_one(self, text: str) -> list[float]:
-        """单条文本 → 归一化伪向量。"""
-        digest = hashlib.sha256(text.encode("utf-8")).digest()
-        values: list[float] = []
-        counter = 0
-        while len(values) < self._dim:
-            block = hashlib.sha256(digest + counter.to_bytes(4, "big")).digest()
-            for i in range(0, len(block), 4):
-                if len(values) >= self._dim:
-                    break
-                raw = int.from_bytes(block[i : i + 4], "big")
-                values.append((raw / 0xFFFFFFFF) * 2.0 - 1.0)
-            counter += 1
+        """单条文本 → 归一化伪向量（字符 1/2-gram 哈希累加）。
+
+        同输入必得同向量；共享 n-gram 的相似文本余弦更高，
+        便于离线 RAG 检索测试（比整串哈希更接近「语义」行为）。
+        """
+        values = [0.0] * self._dim
+        normalized = text.strip().lower()
+        if not normalized:
+            normalized = text.lower() or " "
+
+        grams: list[str] = list(normalized)
+        grams.extend(normalized[i : i + 2] for i in range(max(0, len(normalized) - 1)))
+        for gram in grams:
+            digest = hashlib.sha256(gram.encode("utf-8")).digest()
+            # 用摘要前 8 字节选维度，后 4 字节给符号/幅度
+            slot = int.from_bytes(digest[:4], "big") % self._dim
+            sign_raw = int.from_bytes(digest[4:8], "big")
+            sign = 1.0 if sign_raw % 2 == 0 else -1.0
+            weight = 1.0 + (sign_raw % 1000) / 1000.0
+            values[slot] += sign * weight
+
         # L2 归一化（避免全零）
         norm = math.sqrt(sum(v * v for v in values)) or 1.0
         return [v / norm for v in values]
