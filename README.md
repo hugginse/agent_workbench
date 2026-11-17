@@ -28,6 +28,6 @@ uv run pytest
 - [x] Phase 0 #1 `docs: add project plan and development contract`
 - [x] Phase 0 #2 `chore: bootstrap uv project with ruff, mypy, pytest config`
 - [x] Phase 0 #3 `feat: add settings module and chat model factory with test doubles`
-- [ ] Phase 0 #4 `ci: add GitHub Actions quality gate workflow`
+- [x] Phase 0 #4 `ci: add GitHub Actions quality gate workflow`
 
 **Tag:** `v0.1.0-phase0`（Phase 0 完成后打）
