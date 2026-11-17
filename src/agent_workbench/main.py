@@ -98,6 +98,7 @@ def create_app(
         max_steps=max_steps,
         mode=mode,
         checkpointer=resolved_checkpointer,
+        memory=memory,
     )
 
     app = FastAPI(

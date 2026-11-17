@@ -53,7 +53,7 @@ uv run pytest
 
 - [x] Phase 3 #18 `feat: add long term memory repository for task reflections`
 - [x] Phase 3 #19 `feat: add memory_recall tool for supervisor`
-- [ ] Phase 3 #20 `feat: write task reflection to long term memory on completion`
+- [x] Phase 3 #20 `feat: write task reflection to long term memory on completion`
 - [ ] Phase 3 #21 `feat: add context pruning and per node token accounting`
 - [ ] Phase 3 #22 `test: cover cross session memory and token metrics`
 

@@ -17,6 +17,7 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.base import BaseCheckpointSaver
 
 from agent_workbench.domain.schemas import Task, TaskStatus
+from agent_workbench.memory.long_term import LongTermMemoryRepository, TaskReflection
 from agent_workbench.orchestrator.builder import build_supervisor_graph
 from agent_workbench.orchestrator.single_agent import create_single_agent_graph, initial_state
 from agent_workbench.orchestrator.state import (
@@ -60,6 +61,7 @@ class TaskService:
         mode: TaskMode = "multi",
         checkpointer: BaseCheckpointSaver[Any] | None = None,
         max_repair_attempts: int = DEFAULT_MAX_REPAIR_ATTEMPTS,
+        memory: LongTermMemoryRepository | None = None,
     ) -> None:
         """注入聊天模型与工具注册表。
 
@@ -70,6 +72,7 @@ class TaskService:
             mode: `multi`=Supervisor（默认）；`single`=单 Agent 基线（评测）。
             checkpointer: Supervisor 断点存储；single 模式忽略。
             max_repair_attempts: Supervisor 回修上限（默认 2）。
+            memory: 长期记忆；非 None 时任务终态写入复盘。
         """
         if mode not in ("single", "multi"):
             msg = f"mode 必须为 single|multi，当前 {mode}"
@@ -80,6 +83,7 @@ class TaskService:
         self._mode: TaskMode = mode
         self._checkpointer = checkpointer if mode == "multi" else None
         self._max_repair_attempts = max_repair_attempts
+        self._memory = memory
         self._runtime: dict[str, _Runtime] = {}
         # 持有后台任务引用，避免被 GC 提前回收（RUF006）
         self._background: set[asyncio.Task[None]] = set()
@@ -189,6 +193,13 @@ class TaskService:
             event.update(extras)
             await self._append_event(task_id, event)
             await self._set_terminal(task_id, status=TaskStatus.COMPLETED, error=None)
+            degraded = bool(extras.get("degraded", False))
+            self._write_reflection(
+                task_id,
+                description,
+                outcome="degraded" if degraded else "completed",
+                summary=self._build_success_summary(extras, answer),
+            )
         except Exception as exc:
             # 用户可见错误不携带堆栈/内部路径
             error_msg = f"任务执行失败: {type(exc).__name__}"
@@ -197,6 +208,49 @@ class TaskService:
                 {"type": "task_failed", "task_id": task_id, "error": error_msg, "mode": self._mode},
             )
             await self._set_terminal(task_id, status=TaskStatus.FAILED, error=error_msg)
+            self._write_reflection(
+                task_id,
+                description,
+                outcome="failed",
+                summary=f"执行失败（{type(exc).__name__}）；任务：{description[:120]}",
+            )
+
+    @staticmethod
+    def _build_success_summary(extras: dict[str, Any], answer: str) -> str:
+        """构造成功/降级复盘摘要（确定性，不额外调模型）。"""
+        parts: list[str] = []
+        if extras.get("degraded"):
+            parts.append(f"降级交付（回修 {extras.get('repair_count', 0)} 次）")
+        else:
+            parts.append("正常完成")
+        snippet = answer.strip().replace("\n", " ")[:160]
+        if snippet:
+            parts.append(f"结论：{snippet}")
+        return "；".join(parts) if parts else "任务完成"
+
+    def _write_reflection(
+        self,
+        task_id: str,
+        description: str,
+        *,
+        outcome: str,
+        summary: str,
+    ) -> None:
+        """写入长期复盘（旁路：失败不影响任务终态）。"""
+        if self._memory is None:
+            return
+        try:
+            self._memory.save(
+                TaskReflection(
+                    task_id=task_id,
+                    task_description=description,
+                    summary=summary,
+                    outcome=outcome,
+                )
+            )
+        except (ValueError, OSError):
+            # 复盘写入失败不回滚任务状态
+            return
 
     def _run_graph(self, task_id: str, description: str) -> tuple[dict[str, Any], dict[str, Any]]:
         """同步执行图（在线程池中调用），返回终态与附加信息。"""
