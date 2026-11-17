@@ -55,6 +55,6 @@ uv run pytest
 - [x] Phase 3 #19 `feat: add memory_recall tool for supervisor`
 - [x] Phase 3 #20 `feat: write task reflection to long term memory on completion`
 - [x] Phase 3 #21 `feat: add context pruning and per node token accounting`
-- [ ] Phase 3 #22 `test: cover cross session memory and token metrics`
+- [x] Phase 3 #22 `test: cover cross session memory and token metrics`
 
 **Tag:** `v0.4.0-phase3`（Phase 3 完成后打）
