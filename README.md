@@ -23,6 +23,10 @@ uv run mypy src
 uv run pytest
 ```
 
+## Embedding 切换约束
+
+默认使用确定性替身 `FakeEmbeddings`（离线可复现）。**切换真实 embedding 后必须清空 `.data/` 并重建向量索引**（否则伪向量与真实向量空间不一致，检索结果无效）。
+
 ## 阶段进度
 
 - [x] Phase 0 #1 `docs: add project plan and development contract`
@@ -60,7 +64,7 @@ uv run pytest
 **Tag:** `v0.4.0-phase3` — Phase 3 已完成
 
 - [x] Phase 4 #23 `feat: add document loaders and text splitter`
-- [ ] Phase 4 #24 `feat: add chroma vector store adapter and indexing pipeline`
+- [x] Phase 4 #24 `feat: add chroma vector store adapter and indexing pipeline`
 - [ ] Phase 4 #25 `feat: add retrieve tool with citation builder`
 - [ ] Phase 4 #26 `feat: enforce citation iron rules and abstention`
 - [ ] Phase 4 #27 `test: cover retrieval chat integration with synthetic documents`

@@ -11,6 +11,7 @@ requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "agent_workbench" }]
 dependencies = [
+    "chromadb>=1.5.9",
     "fastapi>=0.163.1",
     "langchain-core>=1.8.1",
     "langchain-openai>=1.8.0",
