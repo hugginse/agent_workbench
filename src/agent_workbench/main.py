@@ -19,7 +19,12 @@ from agent_workbench.memory.long_term import LongTermMemoryRepository, SqliteLon
 from agent_workbench.orchestrator.builder import open_sqlite_checkpointer
 from agent_workbench.orchestrator.state import default_max_steps
 from agent_workbench.tools import ToolRegistry
-from agent_workbench.tools.builtins import FinishTool, MemoryRecallTool, PythonSandboxTool
+from agent_workbench.tools.builtins import (
+    FinishTool,
+    MemoryRecallTool,
+    PythonSandboxTool,
+    RetrieveTool,
+)
 from config.settings import Settings, get_settings
 
 __all__ = ["build_default_registry", "create_app"]
@@ -31,20 +36,27 @@ DEFAULT_MEMORY_DB = Path(".data") / "memory.db"
 
 def build_default_registry(
     memory: LongTermMemoryRepository | None = None,
+    *,
+    vector_store: Any = None,
+    embedder: Any = None,
 ) -> ToolRegistry:
     """构建内置工具注册表。
 
     Args:
         memory: 非 None 时注册 memory_recall（供跨会话复盘检索）。
+        vector_store: 非 None 时注册 retrieve。
+        embedder: retrieve 使用的 Embedding；None 时工具内用 FakeEmbeddings。
 
     Returns:
-        含 finish + python_sandbox（+ 可选 memory_recall）的注册表。
+        含 finish + python_sandbox（+ 可选 memory_recall / retrieve）的注册表。
     """
     registry = ToolRegistry()
     registry.register(FinishTool())
     registry.register(PythonSandboxTool())
     if memory is not None:
         registry.register(MemoryRecallTool(memory))
+    if vector_store is not None:
+        registry.register(RetrieveTool(vector_store, embedder))
     return registry
 
 

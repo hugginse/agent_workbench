@@ -1,4 +1,4 @@
-"""内置工具：finish、python_sandbox、memory_recall。"""
+"""内置工具：finish、python_sandbox、memory_recall、retrieve。"""
 
 from agent_workbench.tools.builtins.finish import FinishArgs, FinishTool
 from agent_workbench.tools.builtins.memory_recall import MemoryRecallArgs, MemoryRecallTool
@@ -8,6 +8,7 @@ from agent_workbench.tools.builtins.python_sandbox import (
     PythonSandboxArgs,
     PythonSandboxTool,
 )
+from agent_workbench.tools.builtins.retrieve import RetrieveArgs, RetrieveTool
 
 __all__ = [
     "DEFAULT_TIMEOUT_SECONDS",
@@ -18,4 +19,6 @@ __all__ = [
     "MemoryRecallTool",
     "PythonSandboxArgs",
     "PythonSandboxTool",
+    "RetrieveArgs",
+    "RetrieveTool",
 ]
