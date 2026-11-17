@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 from collections.abc import Iterator
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -58,7 +59,7 @@ class TestEndToEndTask:
 
         async def run() -> None:
             llm = ScriptedChatModel(scripted_responses=["端到端最终答案"])
-            service = TaskService(llm, build_default_registry(), max_steps=5)
+            service = TaskService(llm, build_default_registry(), max_steps=5, mode="single")
             task = await service.create_task("生成一句总结")
             await _wait_terminal(service, task.id)
             final = service.get_task(task.id)
@@ -77,7 +78,7 @@ class TestEndToEndTask:
                     "收到",
                 ]
             )
-            service = TaskService(llm, build_default_registry(), max_steps=5)
+            service = TaskService(llm, build_default_registry(), max_steps=5, mode="single")
             task = await service.create_task("请用 finish 交付")
             await _wait_terminal(service, task.id)
 
@@ -165,7 +166,7 @@ class TestBoundedTermination:
 
         async def run() -> None:
             llm = ScriptedChatModel(scripted_responses=[_always_tool_call("c_svc")])
-            service = TaskService(llm, build_default_registry(), max_steps=max_steps)
+            service = TaskService(llm, build_default_registry(), max_steps=max_steps, mode="single")
             task = await service.create_task("服务级超限")
             await _wait_terminal(service, task.id)
 
@@ -184,10 +185,10 @@ class TestApiEndToEndSse:
     """API 端到端 + SSE 过程可见（P1 验收）。"""
 
     @pytest.fixture
-    def client(self) -> Iterator[TestClient]:
-        """隔离配置的 TestClient。"""
+    def client(self, tmp_path: Path) -> Iterator[TestClient]:
+        """隔离配置的 TestClient（Supervisor 模式 + 临时 checkpointer）。"""
         settings = Settings(_env_file=None, app_env="test", chat_model="")
-        app = create_app(settings, max_steps=5)
+        app = create_app(settings, max_steps=5, checkpoint_db=tmp_path / "cp.db")
         with TestClient(app) as c:
             yield c
 
