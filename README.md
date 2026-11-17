@@ -46,7 +46,7 @@ uv run pytest
 - [x] Phase 2 #13 `feat: add assign and execute nodes with subagent dispatch`
 - [x] Phase 2 #14 `feat: add review node with bounded repair loop`
 - [x] Phase 2 #15 `feat: add aggregate node and completion routing`
-- [ ] Phase 2 #16 `feat: wire supervisor graph with sqlite checkpointer for resume`
+- [x] Phase 2 #16 `feat: wire supervisor graph with sqlite checkpointer for resume`
 - [ ] Phase 2 #17 `refactor: switch task API from single agent to supervisor graph`
 
 **Tag:** `v0.3.0-phase2`（Phase 2 完成后打）
