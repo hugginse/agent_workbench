@@ -37,6 +37,6 @@ uv run pytest
 - [x] Phase 1 #7 `feat: add built-in tools finish and python sandbox`
 - [x] Phase 1 #8 `feat: add single agent react loop with bounded steps`
 - [x] Phase 1 #9 `feat: add task API endpoints with progress streaming`
-- [ ] Phase 1 #10 `test: cover agent loop and tool calling integration`
+- [x] Phase 1 #10 `test: cover agent loop and tool calling integration`
 
-**Tag:** `v0.2.0-phase1`（Phase 1 完成后打）
+**Tag:** `v0.2.0-phase1` — Phase 1 已完成
