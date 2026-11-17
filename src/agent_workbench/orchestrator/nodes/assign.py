@@ -41,14 +41,20 @@ def create_assign_node() -> Callable[[SupervisorState], dict[str, Any]]:
     """创建 assign 节点。
 
     返回：
-        更新 plan 中各子任务 assignee 的节点函数。
+        更新 plan 中各子任务 assignee 的节点函数；
+        若因评审失败进入回修（verdict 已存在且未通过），同步递增 repair_count。
     """
 
     def assign_node(state: SupervisorState) -> dict[str, Any]:
-        """为 plan 内所有子任务写入 assignee（回修时同样覆盖目标）。"""
+        """写入 assignee；回修入口递增 repair_count（契约：按次封顶）。"""
         assigned: list[SubTask] = [
             st.model_copy(update={"assignee": resolve_assignee(st)}) for st in state["plan"]
         ]
-        return {"plan": assigned}
+        updates: dict[str, Any] = {"plan": assigned}
+        verdict = state["verdict"]
+        if verdict is not None and not verdict.passed:
+            # 回修进入 assign 时计一次（首次 plan→assign 不计）
+            updates["repair_count"] = int(state["repair_count"]) + 1
+        return updates
 
     return assign_node

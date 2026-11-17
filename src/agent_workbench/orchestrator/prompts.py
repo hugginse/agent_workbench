@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from agent_workbench.orchestrator.state import SubTask
 
-__all__ = ["build_execute_prompt", "build_plan_prompt"]
+__all__ = ["build_execute_prompt", "build_plan_prompt", "build_review_prompt"]
 
 _PLAN_TEMPLATE = """你是一名任务规划专家。请将用户任务拆解为可独立执行的子任务。
 
@@ -71,4 +71,40 @@ def build_execute_prompt(
         subtask_id=subtask.id,
         subtask_description=subtask.description.strip(),
         feedback_section=feedback_section,
+    )
+
+
+_REVIEW_TEMPLATE = """你是评审员。请根据总任务与各子任务产出给出评审结论。
+
+## 总任务
+{task_description}
+
+## 子任务与产出
+{results_block}
+
+## 评审要求
+- 全部子任务产出满足要求才 passed=true
+- passed=false 时必须给出 feedback，并指定需要回修的 target_subtask_id（须为上面出现过的 id）
+- 不得编造不存在的子任务 id
+"""
+
+
+def build_review_prompt(task_description: str, results: dict[str, str]) -> str:
+    """构造 review 节点提示词。
+
+    Args:
+        task_description: 总任务描述。
+        results: 子任务 id → 执行结果。
+
+    Returns:
+        送入模型的完整提示词。
+    """
+    if results:
+        lines = [f"### {sid}\n{content}" for sid, content in results.items()]
+        results_block = "\n\n".join(lines)
+    else:
+        results_block = "（尚无产出）"
+    return _REVIEW_TEMPLATE.format(
+        task_description=task_description.strip(),
+        results_block=results_block,
     )
