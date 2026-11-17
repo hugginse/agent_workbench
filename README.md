@@ -30,4 +30,4 @@ uv run pytest
 - [x] Phase 0 #3 `feat: add settings module and chat model factory with test doubles`
 - [x] Phase 0 #4 `ci: add GitHub Actions quality gate workflow`
 
-**Tag:** `v0.1.0-phase0`（Phase 0 完成后打）
+**Tag:** `v0.1.0-phase0` — Phase 0 已完成
