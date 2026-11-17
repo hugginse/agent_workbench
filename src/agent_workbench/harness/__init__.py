@@ -6,5 +6,24 @@ from agent_workbench.harness.dataset import (
     load_dataset_from_path,
     validate_dataset,
 )
+from agent_workbench.harness.metrics import (
+    AggregateMetrics,
+    RunResult,
+    default_judge,
+    summarize_runs,
+)
+from agent_workbench.harness.runner import run_dataset, run_default_dataset, run_one
 
-__all__ = ["EvalTask", "load_dataset", "load_dataset_from_path", "validate_dataset"]
+__all__ = [
+    "AggregateMetrics",
+    "EvalTask",
+    "RunResult",
+    "default_judge",
+    "load_dataset",
+    "load_dataset_from_path",
+    "run_dataset",
+    "run_default_dataset",
+    "run_one",
+    "summarize_runs",
+    "validate_dataset",
+]

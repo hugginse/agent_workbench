@@ -72,7 +72,7 @@ uv run pytest
 **Tag:** `v0.5.0-phase4` — Phase 4 已完成
 
 - [x] Phase 5 #28 `feat: add eval dataset schema and synthetic task fixtures`
-- [ ] Phase 5 #29 `feat: add eval runner with task success and stability metrics`
+- [x] Phase 5 #29 `feat: add eval runner with task success and stability metrics`
 - [ ] Phase 5 #30 `feat: add hallucination and token cost metrics`
 - [ ] Phase 5 #31 `feat: add single agent vs multi agent comparison mode`
 - [ ] Phase 5 #32 `test: cover evaluation harness with scripted model`

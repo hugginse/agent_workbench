@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator
 
 __all__ = [
     "DEFAULT_DATASET_PATH",
@@ -40,7 +40,7 @@ class EvalTask(BaseModel):
         task: 任务自然语言描述。
         expected_artifacts: 期望产出物关键词/结构（供 rubric 机检扩展）。
         should_fail: True 表示「应失败」样本（系统应拒答/优雅失败而非硬崩）。
-        rubric: 人工/自动评分要点。
+        rubric: 评分标准。
     """
 
     id: str = Field(min_length=1, description="任务唯一 id")
@@ -138,7 +138,3 @@ def load_dataset(path: str | Path | None = None) -> list[EvalTask]:
         EvalTask 列表。
     """
     return load_dataset_from_path(path or DEFAULT_DATASET_PATH)
-
-
-# 便于 mypy：避免循环引用 ValidationError 未导入
-from pydantic import ValidationError  # noqa: E402  — 保持局部可读

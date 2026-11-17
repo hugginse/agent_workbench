@@ -22,9 +22,16 @@
 - 替身数字**不能**代表真实模型效果；真实模型须单独跑一轮并在根 README **标注环境**。
 - 切换真实 embedding 后须清空 `.data/` 并重建索引。
 
+## 通过判定（默认 judge）
+
+- **普通任务**（`should_fail=false`）：`completed` 且 answer 非空 → 通过。
+- **应失败样本**（`should_fail=true`）：`failed`，或 `completed` 且（拒答 / 降级 / 空答）→ 通过；
+  给出自信实体答案 → 不通过。
+
 ## 运行
 
 ```bash
-# Phase 5 #29 起提供 CLI；当前阶段以单元/集成测试覆盖 schema 与管道
-uv run pytest tests/unit/test_eval_dataset.py
+uv run python evals/run_evaluation.py --mode multi
+uv run python evals/run_evaluation.py --mode single --json-out evals/last_result.json
+uv run pytest tests/unit/test_eval_runner.py
 ```
