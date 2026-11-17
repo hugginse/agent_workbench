@@ -57,4 +57,12 @@ uv run pytest
 - [x] Phase 3 #21 `feat: add context pruning and per node token accounting`
 - [x] Phase 3 #22 `test: cover cross session memory and token metrics`
 
-**Tag:** `v0.4.0-phase3`（Phase 3 完成后打）
+**Tag:** `v0.4.0-phase3` — Phase 3 已完成
+
+- [x] Phase 4 #23 `feat: add document loaders and text splitter`
+- [ ] Phase 4 #24 `feat: add chroma vector store adapter and indexing pipeline`
+- [ ] Phase 4 #25 `feat: add retrieve tool with citation builder`
+- [ ] Phase 4 #26 `feat: enforce citation iron rules and abstention`
+- [ ] Phase 4 #27 `test: cover retrieval chat integration with synthetic documents`
+
+**Tag:** `v0.5.0-phase4`（Phase 4 完成后打）
