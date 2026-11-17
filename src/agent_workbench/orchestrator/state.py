@@ -78,9 +78,11 @@ class SupervisorState(TypedDict):
         plan: 子任务列表（plan 节点产出，可被回修更新）。
         results: 子任务 id → 执行结果正文。
         verdict: 最近一次评审结论；尚未评审为 None。
-        repair_count: 已发生的回修次数（review.fail 时递增）。
+        repair_count: 已发生的回修次数（回修进入 assign 时递增）。
         max_repair_attempts: 回修上限（默认 2，硬上限 5）。
         token_usage: 累计 token：input / output / total。
+        final_answer: 聚合交付正文（aggregate 节点写入）。
+        degraded: 是否降级交付（超限未通过评审）。
     """
 
     task_description: str
@@ -90,6 +92,8 @@ class SupervisorState(TypedDict):
     repair_count: int
     max_repair_attempts: int
     token_usage: dict[str, int]
+    final_answer: str
+    degraded: bool
 
 
 def _validate_repair_limit(max_repair_attempts: int) -> int:
@@ -135,6 +139,8 @@ def initial_supervisor_state(
         "repair_count": 0,
         "max_repair_attempts": limit,
         "token_usage": {"input": 0, "output": 0, "total": 0},
+        "final_answer": "",
+        "degraded": False,
     }
 
 
