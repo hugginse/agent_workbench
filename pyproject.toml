@@ -13,6 +13,7 @@ authors = [{ name = "agent_workbench" }]
 dependencies = [
     "langchain-core>=1.8.1",
     "langchain-openai>=1.8.0",
+    "langgraph>=1.2.22",
     "pydantic-settings>=2.16.3",
 ]
 

@@ -35,7 +35,7 @@ uv run pytest
 - [x] Phase 1 #5 `feat: add domain schemas for task and agent messages`
 - [x] Phase 1 #6 `feat: add tool registry with schema validation`
 - [x] Phase 1 #7 `feat: add built-in tools finish and python sandbox`
-- [ ] Phase 1 #8 `feat: add single agent react loop with bounded steps`
+- [x] Phase 1 #8 `feat: add single agent react loop with bounded steps`
 - [ ] Phase 1 #9 `feat: add task API endpoints with progress streaming`
 - [ ] Phase 1 #10 `test: cover agent loop and tool calling integration`
 
