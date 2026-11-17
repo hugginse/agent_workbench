@@ -10,7 +10,11 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "agent_workbench" }]
-dependencies = []
+dependencies = [
+    "langchain-core>=1.8.1",
+    "langchain-openai>=1.8.0",
+    "pydantic-settings>=2.16.3",
+]
 
 [dependency-groups]
 dev = [
@@ -40,7 +44,8 @@ select = [
     "RUF", # ruff-specific rules
 ]
 ignore = [
-    "E501",  # 行长度由 line-length 统一控制，长字符串允许超限
+    "E501",   # 行长度由 line-length 统一控制，长字符串允许超限
+    "RUF001", # 中文字符串使用全角标点（契约要求中文输出）
     "RUF002", # 中文 docstring 使用全角标点（契约要求中文输出）
 ]
 
