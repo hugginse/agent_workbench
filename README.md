@@ -75,7 +75,7 @@ uv run pytest
 - [x] Phase 5 #29 `feat: add eval runner with task success and stability metrics`
 - [x] Phase 5 #30 `feat: add hallucination and token cost metrics`
 - [x] Phase 5 #31 `feat: add single agent vs multi agent comparison mode`
-- [ ] Phase 5 #32 `test: cover evaluation harness with scripted model`
+- [x] Phase 5 #32 `test: cover evaluation harness with scripted model`
 - [ ] Phase 5 #33 `docs: embed evaluation results and ablation table in README`
 
 **Tag:** `v0.6.0-phase5`（Phase 5 完成后打）
