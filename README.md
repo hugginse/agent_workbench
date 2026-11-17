@@ -66,7 +66,7 @@ uv run pytest
 - [x] Phase 4 #23 `feat: add document loaders and text splitter`
 - [x] Phase 4 #24 `feat: add chroma vector store adapter and indexing pipeline`
 - [x] Phase 4 #25 `feat: add retrieve tool with citation builder`
-- [ ] Phase 4 #26 `feat: enforce citation iron rules and abstention`
+- [x] Phase 4 #26 `feat: enforce citation iron rules and abstention`
 - [ ] Phase 4 #27 `test: cover retrieval chat integration with synthetic documents`
 
 **Tag:** `v0.5.0-phase4`（Phase 4 完成后打）
