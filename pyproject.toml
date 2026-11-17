@@ -11,6 +11,7 @@ requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "agent_workbench" }]
 dependencies = [
+    "fastapi>=0.163.1",
     "langchain-core>=1.8.1",
     "langchain-openai>=1.8.0",
     "langgraph>=1.2.22",
@@ -22,6 +23,7 @@ dev = [
     "ruff>=0.8.0",
     "mypy>=1.13.0",
     "pytest>=8.3.0",
+    "httpx>=0.28.1",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -46,6 +48,7 @@ select = [
 ]
 ignore = [
     "E501",   # 行长度由 line-length 统一控制，长字符串允许超限
+    "B008",   # FastAPI Depends 惯用参数默认值
     "RUF001", # 中文字符串使用全角标点（契约要求中文输出）
     "RUF002", # 中文 docstring 使用全角标点（契约要求中文输出）
     "RUF003", # 中文注释使用全角标点（契约要求中文输出）
