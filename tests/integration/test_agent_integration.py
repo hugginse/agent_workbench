@@ -188,7 +188,12 @@ class TestApiEndToEndSse:
     def client(self, tmp_path: Path) -> Iterator[TestClient]:
         """隔离配置的 TestClient（Supervisor 模式 + 临时 checkpointer）。"""
         settings = Settings(_env_file=None, app_env="test", chat_model="")
-        app = create_app(settings, max_steps=5, checkpoint_db=tmp_path / "cp.db")
+        app = create_app(
+            settings,
+            max_steps=5,
+            checkpoint_db=tmp_path / "cp.db",
+            memory_db=tmp_path / "memory.db",
+        )
         with TestClient(app) as c:
             yield c
 

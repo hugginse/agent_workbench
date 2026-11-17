@@ -15,23 +15,36 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from agent_workbench.api.endpoints.tasks import router as tasks_router
 from agent_workbench.application.services.task import TaskMode, TaskService
 from agent_workbench.infrastructure.llm import get_chat_model
+from agent_workbench.memory.long_term import LongTermMemoryRepository, SqliteLongTermMemory
 from agent_workbench.orchestrator.builder import open_sqlite_checkpointer
 from agent_workbench.orchestrator.state import default_max_steps
 from agent_workbench.tools import ToolRegistry
-from agent_workbench.tools.builtins import FinishTool, PythonSandboxTool
+from agent_workbench.tools.builtins import FinishTool, MemoryRecallTool, PythonSandboxTool
 from config.settings import Settings, get_settings
 
 __all__ = ["build_default_registry", "create_app"]
 
-# 默认断点库位置（已 .gitignore）
+# 默认断点 / 长期记忆库位置（已 .gitignore）
 DEFAULT_CHECKPOINT_DB = Path(".data") / "checkpoints.db"
+DEFAULT_MEMORY_DB = Path(".data") / "memory.db"
 
 
-def build_default_registry() -> ToolRegistry:
-    """构建内置工具注册表（finish + python_sandbox）。"""
+def build_default_registry(
+    memory: LongTermMemoryRepository | None = None,
+) -> ToolRegistry:
+    """构建内置工具注册表。
+
+    Args:
+        memory: 非 None 时注册 memory_recall（供跨会话复盘检索）。
+
+    Returns:
+        含 finish + python_sandbox（+ 可选 memory_recall）的注册表。
+    """
     registry = ToolRegistry()
     registry.register(FinishTool())
     registry.register(PythonSandboxTool())
+    if memory is not None:
+        registry.register(MemoryRecallTool(memory))
     return registry
 
 
@@ -42,6 +55,8 @@ def create_app(
     mode: TaskMode = "multi",
     checkpointer: BaseCheckpointSaver[Any] | None = None,
     checkpoint_db: str | Path | None = None,
+    memory: LongTermMemoryRepository | None = None,
+    memory_db: str | Path | None = None,
 ) -> FastAPI:
     """创建 FastAPI 应用（依赖注入，无全局可变单例）。
 
@@ -51,6 +66,8 @@ def create_app(
         mode: `multi`=Supervisor（API 默认）；`single`=单 Agent（评测）。
         checkpointer: 显式检查点；为 None 且 multi 时按 checkpoint_db 打开。
         checkpoint_db: SQLite 路径；默认 `.data/checkpoints.db`。
+        memory: 显式长期记忆；为 None 时按 memory_db 打开。
+        memory_db: 长期记忆 SQLite 路径；默认 `.data/memory.db`。
 
     Returns:
         已挂载任务端点的 FastAPI 实例。
@@ -59,7 +76,12 @@ def create_app(
         settings = get_settings()
 
     llm = get_chat_model(settings)
-    registry = build_default_registry()
+
+    if memory is None:
+        mem_path = Path(memory_db) if memory_db is not None else DEFAULT_MEMORY_DB
+        mem_path.parent.mkdir(parents=True, exist_ok=True)
+        memory = SqliteLongTermMemory(mem_path)
+    registry = build_default_registry(memory=memory)
 
     resolved_checkpointer: BaseCheckpointSaver[Any] | None = None
     if mode == "multi":
@@ -85,6 +107,7 @@ def create_app(
     )
     app.state.settings = settings
     app.state.task_service = task_service
+    app.state.memory = memory
     app.include_router(tasks_router)
     return app
 

@@ -18,7 +18,11 @@ from config.settings import Settings
 def client(tmp_path: Path) -> Iterator[TestClient]:
     """使用隔离 Settings（替身模型）与临时 checkpointer 的 TestClient。"""
     settings = Settings(_env_file=None, app_env="test", chat_model="")
-    app = create_app(settings, checkpoint_db=tmp_path / "cp.db")
+    app = create_app(
+        settings,
+        checkpoint_db=tmp_path / "cp.db",
+        memory_db=tmp_path / "memory.db",
+    )
     with TestClient(app) as c:
         yield c
 
