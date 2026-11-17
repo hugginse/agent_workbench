@@ -69,4 +69,13 @@ uv run pytest
 - [x] Phase 4 #26 `feat: enforce citation iron rules and abstention`
 - [x] Phase 4 #27 `test: cover retrieval chat integration with synthetic documents`
 
-**Tag:** `v0.5.0-phase4`（Phase 4 完成后打）
+**Tag:** `v0.5.0-phase4` — Phase 4 已完成
+
+- [x] Phase 5 #28 `feat: add eval dataset schema and synthetic task fixtures`
+- [ ] Phase 5 #29 `feat: add eval runner with task success and stability metrics`
+- [ ] Phase 5 #30 `feat: add hallucination and token cost metrics`
+- [ ] Phase 5 #31 `feat: add single agent vs multi agent comparison mode`
+- [ ] Phase 5 #32 `test: cover evaluation harness with scripted model`
+- [ ] Phase 5 #33 `docs: embed evaluation results and ablation table in README`
+
+**Tag:** `v0.6.0-phase5`（Phase 5 完成后打）
