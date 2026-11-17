@@ -43,7 +43,7 @@ uv run pytest
 
 - [x] Phase 2 #11 `feat: add supervisor state schema with repair counter`
 - [x] Phase 2 #12 `feat: add plan node for task decomposition`
-- [ ] Phase 2 #13 `feat: add assign and execute nodes with subagent dispatch`
+- [x] Phase 2 #13 `feat: add assign and execute nodes with subagent dispatch`
 - [ ] Phase 2 #14 `feat: add review node with bounded repair loop`
 - [ ] Phase 2 #15 `feat: add aggregate node and completion routing`
 - [ ] Phase 2 #16 `feat: wire supervisor graph with sqlite checkpointer for resume`
