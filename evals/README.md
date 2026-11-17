@@ -6,15 +6,16 @@
 - Schema：`id / task / expected_artifacts / should_fail / rubric`（见 `agent_workbench.harness.dataset`）。
 - **全部为合成数据**，禁止真实用户文档进入 fixture（契约）。
 
-## 指标（计划）
+## 指标
 
 | 指标 | 含义 |
 |---|---|
-| 任务通过率 | 非 should_fail 且 rubric 达标的比例 |
-| 链路稳定性 | 逐步成功率 / 重试率 |
-| 幻觉率 | 论断-引用支撑率的补 |
-| 延迟 p50/p95 | 端到端耗时分位 |
-| token 成本 | 来自 `token_usage` 累计 |
+| 任务通过率 | judge 通过比例（见下方判定） |
+| 链路稳定性 | `step_success_rate` / `retry_rate` / `mean_repairs` |
+| 引用支撑率 | 答案引用被合法命中支撑的比例（拒答=1；无引用非拒答=不计入） |
+| 幻觉率 | `1 − 聚合支撑率`（无样本时为 0） |
+| 延迟 p50/p95 | 端到端 `duration_ms` 分位（确定性插值） |
+| token 成本 | **启发式估算**合计/均值（非真实账单；见 `memory.context`） |
 
 ## 替身模式与限制（必读）
 

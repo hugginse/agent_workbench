@@ -9,7 +9,9 @@ from agent_workbench.harness.dataset import (
 from agent_workbench.harness.metrics import (
     AggregateMetrics,
     RunResult,
+    citation_support_rate,
     default_judge,
+    percentile,
     summarize_runs,
 )
 from agent_workbench.harness.runner import run_dataset, run_default_dataset, run_one
@@ -18,9 +20,11 @@ __all__ = [
     "AggregateMetrics",
     "EvalTask",
     "RunResult",
+    "citation_support_rate",
     "default_judge",
     "load_dataset",
     "load_dataset_from_path",
+    "percentile",
     "run_dataset",
     "run_default_dataset",
     "run_one",
