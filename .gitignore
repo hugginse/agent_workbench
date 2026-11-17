@@ -1,0 +1,43 @@
+# 环境与密钥
+.env
+.env.*
+!.env.example
+
+# 数据与运行时产物
+.data/
+*.db
+*.sqlite
+*.sqlite3
+uploads/
+evals/last_result.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# 虚拟环境与工具缓存
+.venv/
+venv/
+uv-cache/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# IDE / 系统
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# 日志与临时文件
+*.log
+tmp/
+.cache/

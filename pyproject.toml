@@ -1,0 +1,66 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "agent-workbench"
+version = "0.1.0"
+description = "多智能体任务执行与评测平台"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "agent_workbench" }]
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+    "pytest>=8.3.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agent_workbench", "config"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "config", "tests"]
+exclude = [".git", ".venv", ".data", "dist", "build", "__pycache__"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+    "SIM", # flake8-simplify
+    "RUF", # ruff-specific rules
+]
+ignore = [
+    "E501",  # 行长度由 line-length 统一控制，长字符串允许超限
+    "RUF002", # 中文 docstring 使用全角标点（契约要求中文输出）
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["agent_workbench", "config"]
+
+[tool.mypy]
+python_version = "3.11"
+mypy_path = ["src"]
+packages = ["agent_workbench"]
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_any_unimported = true
+no_implicit_optional = true
+check_untyped_defs = true
+show_error_codes = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "."]
+addopts = "-q --strict-markers"

@@ -1,0 +1,33 @@
+# agent_workbench
+
+可独立运行、可测试、可观测、可部署的**多智能体任务执行与评测平台**：
+Supervisor 规划拆解 → SubAgent 分工执行 → 评审回修闭环 → 聚合交付；
+双层记忆、工具体系、Agent Harness 量化评测、全链路可观测。
+
+> 开发契约见根目录 [`CLAUDE.md`](CLAUDE.md)；阶段编排见 [`docs/plan.md`](docs/plan.md)；架构说明见 [`docs/architecture.md`](docs/architecture.md)。
+
+## 快速开始
+
+```bash
+uv sync
+uv run pytest
+uv run uvicorn agent_workbench.main:app --reload
+```
+
+## 常用命令
+
+```bash
+uv run ruff check .
+uv run ruff format --check .
+uv run mypy src
+uv run pytest
+```
+
+## 阶段进度
+
+- [x] Phase 0 #1 `docs: add project plan and development contract`
+- [x] Phase 0 #2 `chore: bootstrap uv project with ruff, mypy, pytest config`
+- [ ] Phase 0 #3 `feat: add settings module and chat model factory with test doubles`
+- [ ] Phase 0 #4 `ci: add GitHub Actions quality gate workflow`
+
+**Tag:** `v0.1.0-phase0`（Phase 0 完成后打）
