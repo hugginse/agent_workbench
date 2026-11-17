@@ -8,6 +8,7 @@ from typing import Any
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import HumanMessage
 
+from agent_workbench.memory.context import estimate_tokens, merge_token_usage
 from agent_workbench.orchestrator.prompts import build_aggregate_prompt
 from agent_workbench.orchestrator.state import SupervisorState
 
@@ -74,24 +75,21 @@ def create_aggregate_node(
     """
 
     def aggregate_node(state: SupervisorState) -> dict[str, Any]:
-        """生成最终交付并标记是否降级。"""
+        """生成最终交付并标记是否降级；累计本节点 token_usage。"""
         degraded = is_degraded_delivery(state)
         body = join_results_deterministic(state)
+        input_tokens = 0
+        output_tokens = 0
 
         if llm is not None and not degraded:
+            prompt = build_aggregate_prompt(state["task_description"], state["results"])
+            input_tokens = estimate_tokens(prompt)
             try:
-                response = llm.invoke(
-                    [
-                        HumanMessage(
-                            content=build_aggregate_prompt(
-                                state["task_description"], state["results"]
-                            )
-                        )
-                    ]
-                )
+                response = llm.invoke([HumanMessage(content=prompt)])
                 text = str(getattr(response, "content", "") or "").strip()
                 if text:
                     body = text
+                output_tokens = estimate_tokens(text)
             except (ValueError, TypeError, RuntimeError, OSError):
                 # 汇总失败不阻断交付，保留确定性拼接
                 body = join_results_deterministic(state)
@@ -109,6 +107,14 @@ def create_aggregate_node(
         else:
             final = body
 
-        return {"final_answer": final, "degraded": degraded}
+        return {
+            "final_answer": final,
+            "degraded": degraded,
+            "token_usage": merge_token_usage(
+                state.get("token_usage"),
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+            ),
+        }
 
     return aggregate_node

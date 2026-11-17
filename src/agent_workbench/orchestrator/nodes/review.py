@@ -10,6 +10,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import HumanMessage
 from pydantic import ValidationError
 
+from agent_workbench.memory.context import estimate_tokens, merge_token_usage
 from agent_workbench.orchestrator.prompts import build_review_prompt
 from agent_workbench.orchestrator.state import ReviewVerdict, SupervisorState
 
@@ -59,8 +60,9 @@ def create_review_node(llm: BaseChatModel) -> Callable[[SupervisorState], dict[s
     structured = llm.with_structured_output(ReviewVerdict)
 
     def review_node(state: SupervisorState) -> dict[str, Any]:
-        """产出评审结论并写回 verdict。"""
+        """产出评审结论并写回 verdict 与 token_usage。"""
         prompt = build_review_prompt(state["task_description"], state["results"])
+        input_tokens = estimate_tokens(prompt)
         try:
             raw = structured.invoke([HumanMessage(content=prompt)])
         except (OutputParserException, ValidationError, ValueError, TypeError, RuntimeError):
@@ -76,7 +78,17 @@ def create_review_node(llm: BaseChatModel) -> Callable[[SupervisorState], dict[s
         else:
             verdict = _fallback_verdict(state)
 
-        return {"verdict": _sanitize_verdict(verdict, state)}
+        output_tokens = (
+            estimate_tokens(raw.model_dump_json()) if isinstance(raw, ReviewVerdict) else 0
+        )
+        return {
+            "verdict": _sanitize_verdict(verdict, state),
+            "token_usage": merge_token_usage(
+                state.get("token_usage"),
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+            ),
+        }
 
     return review_node
 

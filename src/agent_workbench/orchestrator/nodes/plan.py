@@ -10,6 +10,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import HumanMessage
 from pydantic import BaseModel, Field, ValidationError
 
+from agent_workbench.memory.context import estimate_tokens, merge_token_usage
 from agent_workbench.orchestrator.prompts import build_plan_prompt
 from agent_workbench.orchestrator.state import SubTask, SupervisorState
 
@@ -73,9 +74,10 @@ def create_plan_node(llm: BaseChatModel) -> Callable[[SupervisorState], dict[str
     structured = llm.with_structured_output(PlanOutput)
 
     def plan_node(state: SupervisorState) -> dict[str, Any]:
-        """拆解任务并写回 plan 字段。"""
+        """拆解任务并写回 plan 与 token_usage。"""
         task_description = state["task_description"]
         prompt = build_plan_prompt(task_description)
+        input_tokens = estimate_tokens(prompt)
         try:
             raw = structured.invoke([HumanMessage(content=prompt)])
         except (OutputParserException, ValidationError, ValueError, TypeError, RuntimeError):
@@ -90,6 +92,14 @@ def create_plan_node(llm: BaseChatModel) -> Callable[[SupervisorState], dict[str
             except (ValidationError, TypeError, ValueError):
                 subtasks = []
 
-        return {"plan": _normalize_subtasks(subtasks, task_description)}
+        output_tokens = estimate_tokens(raw.model_dump_json()) if isinstance(raw, PlanOutput) else 0
+        return {
+            "plan": _normalize_subtasks(subtasks, task_description),
+            "token_usage": merge_token_usage(
+                state.get("token_usage"),
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+            ),
+        }
 
     return plan_node
