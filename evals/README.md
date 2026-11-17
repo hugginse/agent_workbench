@@ -32,7 +32,12 @@
 ## 运行
 
 ```bash
+# 单模式
 uv run python evals/run_evaluation.py --mode multi
 uv run python evals/run_evaluation.py --mode single --json-out evals/last_result.json
+
+# A/B 对比（single vs multi，输出 Markdown 表 + JSON）
+uv run python evals/run_evaluation.py --mode compare --json-out evals/last_compare.json
+
 uv run pytest tests/unit/test_eval_runner.py
 ```

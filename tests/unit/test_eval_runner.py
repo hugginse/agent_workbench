@@ -12,7 +12,9 @@ from agent_workbench.harness import (
     EvalTask,
     RunResult,
     citation_support_rate,
+    compare_modes,
     default_judge,
+    format_comparison_markdown,
     load_dataset,
     percentile,
     run_dataset,
@@ -329,3 +331,71 @@ class TestCliSmoke:
         assert payload["mode"] == "single"
         assert "metrics" in payload
         assert payload["metrics"]["task_count"] >= 30
+
+    def test_cli_compare_mode(self, tmp_path: Path) -> None:
+        from evals.run_evaluation import main
+
+        out = tmp_path / "compare.json"
+        code = main(
+            [
+                "--mode",
+                "compare",
+                "--json-out",
+                str(out),
+                "--max-steps",
+                "3",
+            ]
+        )
+        assert code == 0
+        payload = json.loads(out.read_text(encoding="utf-8"))
+        assert payload["mode"] == "compare"
+        assert "single" in payload and "multi" in payload
+        assert "deltas" in payload
+        assert payload["single"]["task_count"] >= 30
+        assert payload["multi"]["task_count"] >= 30
+
+
+class TestCompareModes:
+    """single vs multi 对比。"""
+
+    def test_compare_report_shape(self) -> None:
+        root = Path(__file__).resolve().parents[2]
+        tasks = load_dataset(root / DEFAULT_DATASET_PATH)
+
+        def factory() -> ScriptedChatModel:
+            return ScriptedChatModel(scripted_responses=[])
+
+        report = compare_modes(
+            tasks,
+            factory,
+            build_default_registry(),
+            max_steps=3,
+        )
+        assert report.single.task_count == len(tasks)
+        assert report.multi.task_count == len(tasks)
+        assert "task_success_rate" in report.deltas
+        assert "token_total_sum" in report.deltas
+        # delta = multi − single
+        expected = round(report.multi.task_success_rate - report.single.task_success_rate, 4)
+        assert report.deltas["task_success_rate"] == expected
+
+    def test_markdown_table(self) -> None:
+        root = Path(__file__).resolve().parents[2]
+        tasks = load_dataset(root / DEFAULT_DATASET_PATH)
+
+        def factory() -> ScriptedChatModel:
+            return ScriptedChatModel(scripted_responses=[])
+
+        report = compare_modes(
+            tasks,
+            factory,
+            build_default_registry(),
+            max_steps=2,
+        )
+        md = format_comparison_markdown(report)
+        assert md.startswith("| 指标 |")
+        assert "任务通过率" in md
+        assert "single" in md.splitlines()[0]
+        assert "multi" in md.splitlines()[0]
+        # 行数 = 表头 + 分隔 + 指标行
+        assert len(md.splitlines()) >= 10

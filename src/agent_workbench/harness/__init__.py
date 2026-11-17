@@ -1,5 +1,11 @@
 """Agent Harness 评测：数据集 schema、runner、指标（分阶段交付）。"""
 
+from agent_workbench.harness.compare import (
+    ComparisonReport,
+    ModeComparison,
+    compare_modes,
+    format_comparison_markdown,
+)
 from agent_workbench.harness.dataset import (
     EvalTask,
     load_dataset,
@@ -18,10 +24,14 @@ from agent_workbench.harness.runner import run_dataset, run_default_dataset, run
 
 __all__ = [
     "AggregateMetrics",
+    "ComparisonReport",
     "EvalTask",
+    "ModeComparison",
     "RunResult",
     "citation_support_rate",
+    "compare_modes",
     "default_judge",
+    "format_comparison_markdown",
     "load_dataset",
     "load_dataset_from_path",
     "percentile",

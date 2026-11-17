@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""评测 CLI：`uv run python evals/run_evaluation.py [--mode single|multi]`。
+"""评测 CLI：`uv run python evals/run_evaluation.py [--mode single|multi|compare]`。
 
 默认使用确定性替身模型（离线可复现）；`--json-out` 写出完整结果。
+`compare` 模式同时跑 single 与 multi 并输出 A/B 对比表。
 """
 
 from __future__ import annotations
@@ -25,9 +26,9 @@ def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="agent_workbench 评测运行器")
     p.add_argument(
         "--mode",
-        choices=("single", "multi"),
+        choices=("single", "multi", "compare"),
         default="multi",
-        help="single=单 Agent 基线；multi=Supervisor（默认）",
+        help="single=单 Agent；multi=Supervisor；compare=A/B 对比（默认 multi）",
     )
     p.add_argument(
         "--dataset",
@@ -60,35 +61,78 @@ def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
 
     from agent_workbench.harness import load_dataset, run_dataset
+    from agent_workbench.harness.compare import (
+        compare_modes,
+        format_comparison_markdown,
+    )
     from agent_workbench.infrastructure.llm import ScriptedChatModel
     from agent_workbench.main import build_default_registry
 
     tasks = load_dataset(args.dataset)
-    # 确定性替身：空脚本 → 默认话术，全程可复现
-    llm = ScriptedChatModel(scripted_responses=[])
     registry = build_default_registry()
 
-    runs, metrics = run_dataset(
-        tasks,
-        llm,
-        registry,
-        mode=args.mode,
-        max_steps=args.max_steps,
-        max_repair_attempts=args.max_repair_attempts,
-    )
+    def make_llm() -> ScriptedChatModel:
+        """每次新建替身，保证 single/multi 起点一致。"""
+        return ScriptedChatModel(scripted_responses=[])
 
-    payload = {
-        "mode": args.mode,
-        "metrics": metrics.model_dump(),
-        "runs": [r.model_dump() for r in runs],
-    }
-    print(json.dumps(metrics.model_dump(), ensure_ascii=False, indent=2))
+    if args.mode == "compare":
+        report = compare_modes(
+            tasks,
+            make_llm,  # type: ignore[arg-type]
+            registry,
+            max_steps=args.max_steps,
+            max_repair_attempts=args.max_repair_attempts,
+        )
+        payload = {
+            "mode": "compare",
+            "single": report.single.model_dump(),
+            "multi": report.multi.model_dump(),
+            "deltas": report.deltas,
+            "single_runs": [r.model_dump() for r in report.single_runs],
+            "multi_runs": [r.model_dump() for r in report.multi_runs],
+        }
+        print(format_comparison_markdown(report))
+        print()
+        print(
+            json.dumps(
+                {
+                    "single": report.single.model_dump(),
+                    "multi": report.multi.model_dump(),
+                    "deltas": report.deltas,
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+    else:
+        llm = make_llm()
+        runs, metrics = run_dataset(
+            tasks,
+            llm,
+            registry,
+            mode=args.mode,  # type: ignore[arg-type]
+            max_steps=args.max_steps,
+            max_repair_attempts=args.max_repair_attempts,
+        )
+        payload = {
+            "mode": args.mode,
+            "metrics": metrics.model_dump(),
+            "runs": [r.model_dump() for r in runs],
+        }
+        print(json.dumps(metrics.model_dump(), ensure_ascii=False, indent=2))
+
     if args.json_out is not None:
         args.json_out.parent.mkdir(parents=True, exist_ok=True)
-        args.json_out.write_text(
-            json.dumps(payload, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
+        if args.mode == "compare":
+            args.json_out.write_text(
+                json.dumps(payload, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+        else:
+            args.json_out.write_text(
+                json.dumps(payload, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
         print(f"已写入 {args.json_out}", file=sys.stderr)
     return 0
 
