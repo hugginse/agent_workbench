@@ -1,0 +1,29 @@
+# 单机 Compose 部署：挂载 .data 持久化 checkpoint / memory / traces
+# 用法：cp .env.example .env 并填写后 `docker compose up --build`
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: agent-workbench:latest
+    ports:
+      - "8000:8000"
+    # 运行时注入配置与密钥（.env 不打进镜像）
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      APP_ENV: ${APP_ENV:-dev}
+      HOST: 0.0.0.0
+      PORT: 8000
+    volumes:
+      # 持久化断点、长期记忆、trace
+      - ./.data:/app/.data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/docs', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s

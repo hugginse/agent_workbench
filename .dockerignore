@@ -1,0 +1,21 @@
+# 不进入构建上下文
+.git
+.github
+.venv
+venv
+.data
+.env
+.env.*
+!.env.example
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.mypy_cache
+.ruff_cache
+*.md
+!README.md
+docs
+tests
+evals
+*.db
+*.sqlite*

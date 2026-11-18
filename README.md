@@ -14,6 +14,16 @@ uv run pytest
 uv run uvicorn agent_workbench.main:app --reload
 ```
 
+### Docker Compose
+
+```bash
+cp .env.example .env   # 填写 CHAT_MODEL / API_KEY 等（可选；不填则用替身）
+docker compose up --build
+# 面板: http://127.0.0.1:8000/ui/   API 文档: /docs
+```
+
+`.data/`（checkpoints / memory / traces）经卷持久化到宿主机；`.env` 只在运行时注入，不打进镜像。
+
 ## 常用命令
 
 ```bash
@@ -134,7 +144,7 @@ uv run pytest
 - [x] Phase 6 #35 `feat: add node level trace recording and replay endpoint`
 - [x] Phase 6 #36 `feat: add metrics endpoint for success latency and cost`
 - [x] Phase 6 #37 `feat: add feedback endpoint and static web ui`
-- [ ] Phase 6 #38 `feat: add dockerfile and compose deployment`
+- [x] Phase 6 #38 `feat: add dockerfile and compose deployment`
 - [ ] Phase 6 #39 `docs: add runbook with security checklist`
 
 **Tag:** `v1.0.0-phase6`（Phase 6 完成后打）
