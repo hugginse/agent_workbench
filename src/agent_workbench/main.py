@@ -10,8 +10,11 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from langgraph.checkpoint.base import BaseCheckpointSaver
 
+from agent_workbench.api.endpoints.feedback import FeedbackStore
+from agent_workbench.api.endpoints.feedback import router as feedback_router
 from agent_workbench.api.endpoints.metrics import router as metrics_router
 from agent_workbench.api.endpoints.progress import router as progress_router
 from agent_workbench.api.endpoints.tasks import router as tasks_router
@@ -38,6 +41,8 @@ __all__ = ["build_default_registry", "create_app"]
 DEFAULT_CHECKPOINT_DB = Path(".data") / "checkpoints.db"
 DEFAULT_MEMORY_DB = Path(".data") / "memory.db"
 DEFAULT_TRACE_DB = Path(".data") / "traces.db"
+# 静态任务面板（相对仓库根；uvicorn 从根目录启动）
+STATIC_DIR = Path(__file__).resolve().parent.parent.parent / "static"
 
 
 def build_default_registry(
@@ -137,9 +142,14 @@ def create_app(
     app.state.task_service = task_service
     app.state.memory = memory
     app.state.span_store = span_store
+    app.state.feedback_store = FeedbackStore()
     app.include_router(tasks_router)
     app.include_router(progress_router)
     app.include_router(metrics_router)
+    app.include_router(feedback_router)
+    # 极简任务面板（仅消费现有 API）
+    if STATIC_DIR.is_dir():
+        app.mount("/ui", StaticFiles(directory=str(STATIC_DIR), html=True), name="ui")
     return app
 
 

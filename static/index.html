@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>agent_workbench 任务面板</title>
+  <style>
+    :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+    body { margin: 1.5rem; max-width: 960px; }
+    h1 { font-size: 1.25rem; }
+    form { display: flex; gap: .5rem; margin-bottom: 1rem; }
+    textarea { flex: 1; min-height: 4rem; padding: .5rem; }
+    button { padding: .5rem .75rem; cursor: pointer; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: .4rem; border-bottom: 1px solid #8884; }
+    .muted { opacity: .7; font-size: .9rem; }
+    .fb button { margin-right: .25rem; }
+  </style>
+</head>
+<body>
+  <h1>agent_workbench · 任务面板</h1>
+  <p class="muted">仅调用现有 API：POST/GET /tasks、/metrics、/feedback</p>
+
+  <form id="create-form">
+    <textarea id="desc" placeholder="输入任务描述…" required></textarea>
+    <button type="submit">创建任务</button>
+  </form>
+
+  <p id="metrics" class="muted">metrics: —</p>
+
+  <table>
+    <thead>
+      <tr><th>ID</th><th>状态</th><th>描述</th><th>反馈</th></tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    async function loadMetrics() {
+      try {
+        const r = await fetch("/metrics");
+        const m = await r.json();
+        $("metrics").textContent =
+          `metrics: tasks=${m.task_count} success=${m.success_rate} ` +
+          `p50=${m.latency_p50_ms}ms tokens≈${m.token_total_sum}`;
+      } catch {
+        $("metrics").textContent = "metrics: 加载失败";
+      }
+    }
+
+    async function loadTasks() {
+      // 无列表 API：用 metrics + 本地创建记录；刷新前保留本页会话创建的任务
+      const ids = JSON.parse(sessionStorage.getItem("aw_tasks") || "[]");
+      const tbody = $("rows");
+      tbody.innerHTML = "";
+      for (const id of ids) {
+        try {
+          const r = await fetch(`/tasks/${id}`);
+          if (!r.ok) continue;
+          const t = await r.json();
+          const tr = document.createElement("tr");
+          const fb = document.createElement("td");
+          fb.className = "fb";
+          for (const rating of ["up", "down"]) {
+            const b = document.createElement("button");
+            b.textContent = rating === "up" ? "👍" : "👎";
+            b.onclick = () => sendFeedback(t.id, rating);
+            fb.appendChild(b);
+          }
+          const fbStat = document.createElement("span");
+          fbStat.id = `fb-${t.id}`;
+          fbStat.className = "muted";
+          fb.appendChild(fbStat);
+          tr.innerHTML = `<td>${t.id.slice(0, 8)}</td><td>${t.status}</td><td></td>`;
+          tr.children[2].textContent = t.description;
+          tr.appendChild(fb);
+          tbody.appendChild(tr);
+        } catch { /* skip */ }
+      }
+    }
+
+    async function sendFeedback(taskId, rating) {
+      await fetch("/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ task_id: taskId, rating }),
+      });
+      const r = await fetch(`/feedback/${taskId}`);
+      if (r.ok) {
+        const f = await r.json();
+        const el = document.getElementById(`fb-${taskId}`);
+        if (el) el.textContent = ` up=${f.count_up} down=${f.count_down}`;
+      }
+    }
+
+    $("create-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const desc = $("desc").value.trim();
+      if (!desc) return;
+      const r = await fetch("/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ description: desc }),
+      });
+      if (!r.ok) { alert("创建失败"); return; }
+      const t = await r.json();
+      const ids = JSON.parse(sessionStorage.getItem("aw_tasks") || "[]");
+      ids.unshift(t.id);
+      sessionStorage.setItem("aw_tasks", JSON.stringify(ids.slice(0, 50)));
+      $("desc").value = "";
+      loadTasks();
+      loadMetrics();
+    });
+
+    loadMetrics();
+    loadTasks();
+    setInterval(() => { loadTasks(); loadMetrics(); }, 3000);
+  </script>
+</body>
+</html>

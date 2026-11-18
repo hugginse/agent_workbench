@@ -133,7 +133,7 @@ uv run pytest
 - [x] Phase 6 #34 `feat: add structured json logging with request correlation`
 - [x] Phase 6 #35 `feat: add node level trace recording and replay endpoint`
 - [x] Phase 6 #36 `feat: add metrics endpoint for success latency and cost`
-- [ ] Phase 6 #37 `feat: add feedback endpoint and static web ui`
+- [x] Phase 6 #37 `feat: add feedback endpoint and static web ui`
 - [ ] Phase 6 #38 `feat: add dockerfile and compose deployment`
 - [ ] Phase 6 #39 `docs: add runbook with security checklist`
 
