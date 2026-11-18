@@ -17,8 +17,10 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.base import BaseCheckpointSaver
+from pydantic import BaseModel, Field
 
 from agent_workbench.domain.schemas import Task, TaskStatus
+from agent_workbench.memory.context import estimate_tokens
 from agent_workbench.memory.long_term import LongTermMemoryRepository, TaskReflection
 from agent_workbench.observability.tracing import NoopSpanStore, SpanRecord, SpanStore
 from agent_workbench.orchestrator.builder import build_supervisor_graph
@@ -30,7 +32,7 @@ from agent_workbench.orchestrator.state import (
 )
 from agent_workbench.tools.registry import ToolRegistry
 
-__all__ = ["TaskNotFoundError", "TaskService"]
+__all__ = ["TaskMetricSample", "TaskNotFoundError", "TaskService"]
 
 _TERMINAL = frozenset({TaskStatus.COMPLETED, TaskStatus.FAILED})
 
@@ -39,6 +41,15 @@ TaskMode = Literal["single", "multi"]
 
 class TaskNotFoundError(KeyError):
     """任务不存在。"""
+
+
+class TaskMetricSample(BaseModel):
+    """单任务指标采样（终态时写入，供 GET /metrics）。"""
+
+    task_id: str
+    status: str
+    duration_ms: float = Field(ge=0.0)
+    token_total: int = Field(default=0, ge=0)
 
 
 class _Runtime:
@@ -91,6 +102,7 @@ class TaskService:
         self._memory = memory
         self._span_store: SpanStore = span_store if span_store is not None else NoopSpanStore()
         self._runtime: dict[str, _Runtime] = {}
+        self._metric_samples: list[TaskMetricSample] = []
         # 持有后台任务引用，避免被 GC 提前回收（RUF006）
         self._background: set[asyncio.Task[None]] = set()
 
@@ -122,6 +134,10 @@ class TaskService:
             TaskNotFoundError: 任务不存在。
         """
         return self._require(task_id).task
+
+    def list_metric_samples(self) -> list[TaskMetricSample]:
+        """返回全部终态任务指标采样副本。"""
+        return list(self._metric_samples)
 
     def is_terminal(self, task_id: str) -> bool:
         """任务是否已到终态（completed / failed）。"""
@@ -175,9 +191,10 @@ class TaskService:
             rt.cond.notify_all()
 
     async def _execute(self, task_id: str) -> None:
-        """在后台执行编排图并写回终态与事件。"""
+        """在后台执行编排图并写回终态、事件与指标采样。"""
         rt = self._require(task_id)
         description = rt.task.description
+        started = time.perf_counter()
         await self._append_event(
             task_id,
             {
@@ -206,6 +223,12 @@ class TaskService:
                 outcome="degraded" if degraded else "completed",
                 summary=self._build_success_summary(extras, answer),
             )
+            self._record_sample(
+                task_id,
+                status="completed",
+                duration_ms=(time.perf_counter() - started) * 1000.0,
+                token_total=int(extras.get("token_total", 0)),
+            )
         except Exception as exc:
             # 用户可见错误不携带堆栈/内部路径
             error_msg = f"任务执行失败: {type(exc).__name__}"
@@ -220,6 +243,33 @@ class TaskService:
                 outcome="failed",
                 summary=f"执行失败（{type(exc).__name__}）；任务：{description[:120]}",
             )
+            self._record_sample(
+                task_id,
+                status="failed",
+                duration_ms=(time.perf_counter() - started) * 1000.0,
+                token_total=0,
+            )
+
+    def _record_sample(
+        self,
+        task_id: str,
+        *,
+        status: str,
+        duration_ms: float,
+        token_total: int,
+    ) -> None:
+        """追加指标采样（旁路，失败不影响任务）。"""
+        try:
+            self._metric_samples.append(
+                TaskMetricSample(
+                    task_id=task_id,
+                    status=status,
+                    duration_ms=max(0.0, duration_ms),
+                    token_total=max(0, token_total),
+                )
+            )
+        except (ValueError, TypeError):
+            return
 
     @staticmethod
     def _build_success_summary(extras: dict[str, Any], answer: str) -> str:
@@ -307,6 +357,7 @@ class TaskService:
             extras: dict[str, Any] = {
                 "answer": answer,
                 "step_count": int(single_final.get("step_count", 0)),
+                "token_total": estimate_tokens(answer) + estimate_tokens(description),
             }
             return single_final, extras
 
@@ -362,11 +413,16 @@ class TaskService:
         answer = str(supervisor_final.get("final_answer") or "")
         if not answer:
             answer = self._extract_single_answer(supervisor_final)
+        usage = supervisor_final.get("token_usage") or {}
+        token_total = int(usage.get("total", 0))
+        if token_total <= 0:
+            token_total = estimate_tokens(answer) + estimate_tokens(description)
         extras = {
             "answer": answer,
             "degraded": bool(supervisor_final.get("degraded", False)),
             "repair_count": int(supervisor_final.get("repair_count", 0)),
             "step_count": int(supervisor_final.get("repair_count", 0)),
+            "token_total": token_total,
         }
         return supervisor_final, extras
 

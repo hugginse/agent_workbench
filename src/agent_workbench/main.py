@@ -12,6 +12,7 @@ from typing import Any
 from fastapi import FastAPI
 from langgraph.checkpoint.base import BaseCheckpointSaver
 
+from agent_workbench.api.endpoints.metrics import router as metrics_router
 from agent_workbench.api.endpoints.progress import router as progress_router
 from agent_workbench.api.endpoints.tasks import router as tasks_router
 from agent_workbench.api.middleware import RequestIdMiddleware
@@ -138,6 +139,7 @@ def create_app(
     app.state.span_store = span_store
     app.include_router(tasks_router)
     app.include_router(progress_router)
+    app.include_router(metrics_router)
     return app
 
 
