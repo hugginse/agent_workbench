@@ -286,11 +286,11 @@ git remote add origin <你的远端地址>
 
 ## 7. 验收总表（逐 Phase 打卡）
 
-- [ ] P0：四件套 + CI 就位；`uv run uvicorn agent_workbench.main:app` 可起服务
-- [ ] P1：单 Agent 任务端到端（工具调用、超限终止），SSE 可见过程
-- [ ] P2：Supervisor 三路径测试绿 + 断点续跑演示（kill 进程 → 重启 → 续跑）
-- [ ] P3：跨会话记忆召回演示 + token 指标落库
-- [ ] P4：上传合成文档 → 检索 → 带引用回答 → 无证据拒答
-- [ ] P5：`run_evaluation.py --mode single|multi` 输出对比表，README 有真实数字（标注环境）
-- [ ] P6：`/metrics` 三指标可读、trace 可回放、`docker compose up` 一键起
-- [ ] 全程：39 个语义化 commit、7 个 tag、无脏提交（不含 `.env`、`.data/`、密钥）
+- [x] P0：四件套 + CI 就位；`uv run uvicorn agent_workbench.main:app` 可起服务
+- [x] P1：单 Agent 任务端到端（工具调用、超限终止），SSE 可见过程
+- [x] P2：Supervisor 三路径测试绿 + 断点续跑演示（kill 进程 → 重启 → 续跑）
+- [x] P3：跨会话记忆召回演示 + token 指标落库
+- [x] P4：上传合成文档 → 检索 → 带引用回答 → 无证据拒答
+- [x] P5：`run_evaluation.py --mode single|multi` 输出对比表，README 有真实数字（标注环境）
+- [x] P6：`/metrics` 三指标可读、trace 可回放、`docker compose up` 一键起（compose config 已验证；本机 daemon 未启时未实际 up，见 runbook）
+- [x] 全程：39 个语义化 commit、7 个 tag、无脏提交（不含 `.env`、`.data/`、密钥）

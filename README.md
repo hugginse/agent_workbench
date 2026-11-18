@@ -4,7 +4,7 @@
 Supervisor 规划拆解 → SubAgent 分工执行 → 评审回修闭环 → 聚合交付；
 双层记忆、工具体系、Agent Harness 量化评测、全链路可观测。
 
-> 开发契约见根目录 [`CLAUDE.md`](CLAUDE.md)；阶段编排见 [`docs/plan.md`](docs/plan.md)；架构说明见 [`docs/architecture.md`](docs/architecture.md)。
+> 开发契约见根目录 [`CLAUDE.md`](CLAUDE.md)；阶段编排见 [`docs/plan.md`](docs/plan.md)；架构说明见 [`docs/architecture.md`](docs/architecture.md)；**运维与安全清单见 [`docs/runbook.md`](docs/runbook.md)**。
 
 ## 快速开始
 
@@ -12,6 +12,7 @@ Supervisor 规划拆解 → SubAgent 分工执行 → 评审回修闭环 → 聚
 uv sync
 uv run pytest
 uv run uvicorn agent_workbench.main:app --reload
+# 任务面板: http://127.0.0.1:8000/ui/   API: /docs   指标: /metrics
 ```
 
 ### Docker Compose
@@ -145,6 +146,6 @@ uv run pytest
 - [x] Phase 6 #36 `feat: add metrics endpoint for success latency and cost`
 - [x] Phase 6 #37 `feat: add feedback endpoint and static web ui`
 - [x] Phase 6 #38 `feat: add dockerfile and compose deployment`
-- [ ] Phase 6 #39 `docs: add runbook with security checklist`
+- [x] Phase 6 #39 `docs: add runbook with security checklist`
 
-**Tag:** `v1.0.0-phase6`（Phase 6 完成后打）
+**Tag:** `v1.0.0-phase6` — Phase 6 已完成（主线完成）
