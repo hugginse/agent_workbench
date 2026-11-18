@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 from collections.abc import AsyncIterator
+from datetime import UTC, datetime
 from typing import Any, Literal
 
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -18,6 +20,7 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 
 from agent_workbench.domain.schemas import Task, TaskStatus
 from agent_workbench.memory.long_term import LongTermMemoryRepository, TaskReflection
+from agent_workbench.observability.tracing import NoopSpanStore, SpanRecord, SpanStore
 from agent_workbench.orchestrator.builder import build_supervisor_graph
 from agent_workbench.orchestrator.single_agent import create_single_agent_graph, initial_state
 from agent_workbench.orchestrator.state import (
@@ -62,6 +65,7 @@ class TaskService:
         checkpointer: BaseCheckpointSaver[Any] | None = None,
         max_repair_attempts: int = DEFAULT_MAX_REPAIR_ATTEMPTS,
         memory: LongTermMemoryRepository | None = None,
+        span_store: SpanStore | None = None,
     ) -> None:
         """注入聊天模型与工具注册表。
 
@@ -73,6 +77,7 @@ class TaskService:
             checkpointer: Supervisor 断点存储；single 模式忽略。
             max_repair_attempts: Supervisor 回修上限（默认 2）。
             memory: 长期记忆；非 None 时任务终态写入复盘。
+            span_store: trace 存储；None 时用 Noop（不写库）。
         """
         if mode not in ("single", "multi"):
             msg = f"mode 必须为 single|multi，当前 {mode}"
@@ -84,6 +89,7 @@ class TaskService:
         self._checkpointer = checkpointer if mode == "multi" else None
         self._max_repair_attempts = max_repair_attempts
         self._memory = memory
+        self._span_store: SpanStore = span_store if span_store is not None else NoopSpanStore()
         self._runtime: dict[str, _Runtime] = {}
         # 持有后台任务引用，避免被 GC 提前回收（RUF006）
         self._background: set[asyncio.Task[None]] = set()
@@ -252,8 +258,33 @@ class TaskService:
             # 复盘写入失败不回滚任务状态
             return
 
+    def _record_span(
+        self,
+        task_id: str,
+        name: str,
+        *,
+        started_at: datetime,
+        duration_ms: float,
+        status: str = "ok",
+        detail: str = "",
+    ) -> None:
+        """旁路写入 span（异常吞掉，不影响任务）。"""
+        try:
+            self._span_store.record(
+                SpanRecord(
+                    task_id=task_id,
+                    name=name,
+                    status=status,
+                    started_at=started_at,
+                    duration_ms=duration_ms,
+                    detail=detail,
+                )
+            )
+        except (ValueError, OSError):
+            return
+
     def _run_graph(self, task_id: str, description: str) -> tuple[dict[str, Any], dict[str, Any]]:
-        """同步执行图（在线程池中调用），返回终态与附加信息。"""
+        """同步执行图（在线程池中调用），返回终态与附加信息，并记录节点 span。"""
         if self._mode == "single":
             single_graph = create_single_agent_graph(
                 self._llm,
@@ -261,7 +292,17 @@ class TaskService:
                 max_steps=self._max_steps,
             )
             initial = initial_state(description, max_steps=self._max_steps)
+            started = datetime.now(UTC)
+            t0 = time.perf_counter()
             single_final: dict[str, Any] = single_graph.invoke(initial)
+            duration = (time.perf_counter() - t0) * 1000.0
+            self._record_span(
+                task_id,
+                "single_agent",
+                started_at=started,
+                duration_ms=duration,
+                detail=f"mode=single steps={single_final.get('step_count', 0)}",
+            )
             answer = self._extract_single_answer(single_final)
             extras: dict[str, Any] = {
                 "answer": answer,
@@ -279,11 +320,44 @@ class TaskService:
             description,
             max_repair_attempts=self._max_repair_attempts,
         )
+        run_config: RunnableConfig | None = None
         if self._checkpointer is not None:
             run_config = RunnableConfig(configurable={"thread_id": task_id})
-            supervisor_final: dict[str, Any] = supervisor_graph.invoke(initial_sv, run_config)
-        else:
-            supervisor_final = supervisor_graph.invoke(initial_sv)
+
+        # stream 记录节点 span；values 终态作 final
+        started_all = datetime.now(UTC)
+        t0 = time.perf_counter()
+        supervisor_final: dict[str, Any] = {}
+        last_node_at = t0
+        for stream_mode, chunk in supervisor_graph.stream(
+            initial_sv,
+            config=run_config,
+            stream_mode=["updates", "values"],
+        ):
+            now = time.perf_counter()
+            if stream_mode == "updates" and isinstance(chunk, dict):
+                for node_name in chunk:
+                    self._record_span(
+                        task_id,
+                        str(node_name),
+                        started_at=datetime.fromtimestamp(
+                            started_all.timestamp() + (last_node_at - t0),
+                            tz=UTC,
+                        ),
+                        duration_ms=(now - last_node_at) * 1000.0,
+                        detail="mode=multi",
+                    )
+                    last_node_at = now
+            elif stream_mode == "values" and isinstance(chunk, dict):
+                supervisor_final = chunk
+
+        self._record_span(
+            task_id,
+            "supervisor_total",
+            started_at=started_all,
+            duration_ms=(time.perf_counter() - t0) * 1000.0,
+            detail="mode=multi",
+        )
 
         answer = str(supervisor_final.get("final_answer") or "")
         if not answer:

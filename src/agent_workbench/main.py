@@ -12,12 +12,14 @@ from typing import Any
 from fastapi import FastAPI
 from langgraph.checkpoint.base import BaseCheckpointSaver
 
+from agent_workbench.api.endpoints.progress import router as progress_router
 from agent_workbench.api.endpoints.tasks import router as tasks_router
 from agent_workbench.api.middleware import RequestIdMiddleware
 from agent_workbench.application.services.task import TaskMode, TaskService
 from agent_workbench.infrastructure.llm import get_chat_model
 from agent_workbench.memory.long_term import LongTermMemoryRepository, SqliteLongTermMemory
 from agent_workbench.observability.logging import configure_logging
+from agent_workbench.observability.tracing import SqliteSpanStore
 from agent_workbench.orchestrator.builder import open_sqlite_checkpointer
 from agent_workbench.orchestrator.state import default_max_steps
 from agent_workbench.tools import ToolRegistry
@@ -31,9 +33,10 @@ from config.settings import Settings, get_settings
 
 __all__ = ["build_default_registry", "create_app"]
 
-# 默认断点 / 长期记忆库位置（已 .gitignore）
+# 默认断点 / 长期记忆 / trace 库位置（已 .gitignore）
 DEFAULT_CHECKPOINT_DB = Path(".data") / "checkpoints.db"
 DEFAULT_MEMORY_DB = Path(".data") / "memory.db"
+DEFAULT_TRACE_DB = Path(".data") / "traces.db"
 
 
 def build_default_registry(
@@ -71,6 +74,7 @@ def create_app(
     checkpoint_db: str | Path | None = None,
     memory: LongTermMemoryRepository | None = None,
     memory_db: str | Path | None = None,
+    trace_db: str | Path | None = None,
 ) -> FastAPI:
     """创建 FastAPI 应用（依赖注入，无全局可变单例）。
 
@@ -82,9 +86,10 @@ def create_app(
         checkpoint_db: SQLite 路径；默认 `.data/checkpoints.db`。
         memory: 显式长期记忆；为 None 时按 memory_db 打开。
         memory_db: 长期记忆 SQLite 路径；默认 `.data/memory.db`。
+        trace_db: span SQLite 路径；默认 `.data/traces.db`。
 
     Returns:
-        已挂载任务端点的 FastAPI 实例。
+        已挂载任务与进度端点的 FastAPI 实例。
     """
     if settings is None:
         settings = get_settings()
@@ -96,6 +101,9 @@ def create_app(
         mem_path.parent.mkdir(parents=True, exist_ok=True)
         memory = SqliteLongTermMemory(mem_path)
     registry = build_default_registry(memory=memory)
+
+    trace_path = Path(trace_db) if trace_db is not None else DEFAULT_TRACE_DB
+    span_store = SqliteSpanStore(trace_path)
 
     resolved_checkpointer: BaseCheckpointSaver[Any] | None = None
     if mode == "multi":
@@ -113,6 +121,7 @@ def create_app(
         mode=mode,
         checkpointer=resolved_checkpointer,
         memory=memory,
+        span_store=span_store,
     )
 
     app = FastAPI(
@@ -126,7 +135,9 @@ def create_app(
     app.state.settings = settings
     app.state.task_service = task_service
     app.state.memory = memory
+    app.state.span_store = span_store
     app.include_router(tasks_router)
+    app.include_router(progress_router)
     return app
 
 
