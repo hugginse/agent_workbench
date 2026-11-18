@@ -129,3 +129,12 @@ uv run pytest
 - [x] Phase 5 #33 `docs: embed evaluation results and ablation table in README`
 
 **Tag:** `v0.6.0-phase5` — Phase 5 已完成
+
+- [x] Phase 6 #34 `feat: add structured json logging with request correlation`
+- [ ] Phase 6 #35 `feat: add node level trace recording and replay endpoint`
+- [ ] Phase 6 #36 `feat: add metrics endpoint for success latency and cost`
+- [ ] Phase 6 #37 `feat: add feedback endpoint and static web ui`
+- [ ] Phase 6 #38 `feat: add dockerfile and compose deployment`
+- [ ] Phase 6 #39 `docs: add runbook with security checklist`
+
+**Tag:** `v1.0.0-phase6`（Phase 6 完成后打）

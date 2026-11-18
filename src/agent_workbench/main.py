@@ -13,9 +13,11 @@ from fastapi import FastAPI
 from langgraph.checkpoint.base import BaseCheckpointSaver
 
 from agent_workbench.api.endpoints.tasks import router as tasks_router
+from agent_workbench.api.middleware import RequestIdMiddleware
 from agent_workbench.application.services.task import TaskMode, TaskService
 from agent_workbench.infrastructure.llm import get_chat_model
 from agent_workbench.memory.long_term import LongTermMemoryRepository, SqliteLongTermMemory
+from agent_workbench.observability.logging import configure_logging
 from agent_workbench.orchestrator.builder import open_sqlite_checkpointer
 from agent_workbench.orchestrator.state import default_max_steps
 from agent_workbench.tools import ToolRegistry
@@ -118,6 +120,9 @@ def create_app(
         version="0.1.0",
         description="多智能体任务执行与评测平台",
     )
+    # JSON 日志 + X-Request-ID 关联（测试可 force 重配）
+    configure_logging(settings.log_level)
+    app.add_middleware(RequestIdMiddleware)
     app.state.settings = settings
     app.state.task_service = task_service
     app.state.memory = memory
