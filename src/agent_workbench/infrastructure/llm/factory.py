@@ -5,6 +5,8 @@ LLM 只经本工厂或依赖注入创建；模块 import 时不构造模型、�
 
 from __future__ import annotations
 
+from typing import Any
+
 from langchain_core.language_models.chat_models import BaseChatModel
 
 from agent_workbench.infrastructure.llm.scripted import DEFAULT_SCRIPTED_RESPONSE, ScriptedChatModel
@@ -17,7 +19,7 @@ def get_chat_model(settings: Settings | None = None) -> BaseChatModel:
     """获取聊天模型实例。
 
     - 替身路径：`APP_ENV=test` 或未配置 `CHAT_MODEL` → `ScriptedChatModel`；
-    - 真实路径：已配置 `CHAT_MODEL` 且非 test 环境 → 按需构造真实客户端。
+    - 真实路径：已配置 `CHAT_MODEL` 且非 test 环境 → ChatOpenAI（支持 api_key/base_url）。
 
     Args:
         settings: 显式配置；为 None 时从环境与 `.env` 读取。
@@ -40,7 +42,7 @@ def _create_real_chat_model(settings: Settings) -> BaseChatModel:
     """构造真实聊天模型（延迟 import，避免加载期昂贵初始化）。
 
     Args:
-        settings: 含 `chat_model` 的应用配置。
+        settings: 含 `chat_model` / `api_key` / `base_url` 的应用配置。
 
     Returns:
         真实 `BaseChatModel` 实例。
@@ -55,4 +57,12 @@ def _create_real_chat_model(settings: Settings) -> BaseChatModel:
 
     from langchain_openai import ChatOpenAI
 
-    return ChatOpenAI(model=model_name, temperature=0)
+    kwargs: dict[str, Any] = {"model": model_name, "temperature": 0}
+    api_key = settings.api_key.strip()
+    if api_key:
+        kwargs["api_key"] = api_key
+    # 未配置 API_KEY 时交给 SDK 读 OPENAI_API_KEY；仍无凭据则由 SDK 报错
+    base_url = settings.base_url.strip()
+    if base_url:
+        kwargs["base_url"] = base_url
+    return ChatOpenAI(**kwargs)

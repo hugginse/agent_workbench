@@ -9,7 +9,8 @@
 *.sqlite
 *.sqlite3
 uploads/
-evals/last_result.json
+evals/last_*.json
+evals/last_compare*.json
 
 # Python
 __pycache__/

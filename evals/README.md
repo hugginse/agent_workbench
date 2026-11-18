@@ -32,12 +32,21 @@
 ## 运行
 
 ```bash
-# 单模式
-uv run python evals/run_evaluation.py --mode multi
-uv run python evals/run_evaluation.py --mode single --json-out evals/last_result.json
+# 强制替身（离线可复现）
+uv run python evals/run_evaluation.py --mode compare --scripted \
+  --json-out evals/last_compare_scripted.json
 
-# A/B 对比（single vs multi，输出 Markdown 表 + JSON）
-uv run python evals/run_evaluation.py --mode compare --json-out evals/last_compare.json
+# 按 .env 真实模型（需 API_KEY / CHAT_MODEL；全量较慢，串行数小时级）
+uv run python evals/run_evaluation.py --mode compare \
+  --json-out evals/last_compare_real.json
 
 uv run pytest tests/unit/test_eval_runner.py
 ```
+
+## 最近一轮结果摘要
+
+- **替身（2026-11-17）：** single 通过率 0.8333 / multi 1.0000  
+- **真实 mimo-v2.6-flash（2026-11-18，36×2 未截断）：** single 0.8056 / multi 0.9722  
+- 完整 A/B 表与环境标注见根目录 `README.md`「评测结果」。
+
+原始 JSON（`last_compare_*.json`）默认 gitignore，不入库。

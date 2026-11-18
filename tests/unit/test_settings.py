@@ -14,8 +14,16 @@ from config.settings import Settings, get_settings
 
 
 def _settings(**overrides: object) -> Settings:
-    """构建隔离于进程环境与 .env 的测试配置。"""
-    return Settings(_env_file=None, **overrides)  # type: ignore[arg-type]
+    """构建隔离于 .env 的测试配置；默认 dev + 空凭据，避免读到进程环境。"""
+    base: dict[str, object] = {
+        "app_env": "dev",
+        "api_key": "",
+        "base_url": "",
+        "embedding_api_key": "",
+        "embedding_base_url": "",
+    }
+    base.update(overrides)
+    return Settings(_env_file=None, **base)  # type: ignore[arg-type]
 
 
 class TestSettings:
@@ -104,3 +112,70 @@ class TestGetChatModel:
         model = get_chat_model(_settings(app_env="dev", chat_model="gpt-4o-mini"))
         assert isinstance(model, ChatOpenAI)
         assert model.model_name == "gpt-4o-mini"
+
+    def test_real_path_passes_api_key_and_base_url(self) -> None:
+        """API_KEY / BASE_URL 写入 ChatOpenAI 客户端配置。"""
+        model = get_chat_model(
+            _settings(
+                app_env="dev",
+                chat_model="gpt-4o-mini",
+                api_key="sk-unit-test",
+                base_url="https://gateway.example.com/v1",
+            )
+        )
+        assert isinstance(model, ChatOpenAI)
+        # SecretStr 不在日志/断言里展开明文比较方式：取 secret 值确认注入
+        secret = model.openai_api_key
+        assert secret is not None
+        assert secret.get_secret_value() == "sk-unit-test"
+        assert str(model.openai_api_base).startswith("https://gateway.example.com")
+
+
+class TestApiKeyBaseUrlSettings:
+    """api_key / base_url 配置与 Embedding 回退。"""
+
+    def test_defaults_empty(self) -> None:
+        s = _settings()
+        assert s.api_key == ""
+        assert s.base_url == ""
+        assert s.embedding_api_key == ""
+        assert s.embedding_base_url == ""
+
+    def test_env_style_keys(self) -> None:
+        s = Settings(
+            _env_file=None,
+            API_KEY="sk-env",
+            BASE_URL="https://gw.example/v1",
+            EMBEDDING_API_KEY="emb-key",
+            EMBEDDING_BASE_URL="https://emb.example/v1",
+        )
+        assert s.api_key == "sk-env"
+        assert s.base_url == "https://gw.example/v1"
+        assert s.resolved_embedding_api_key() == "emb-key"
+        assert s.resolved_embedding_base_url() == "https://emb.example/v1"
+
+    def test_embedding_fallback_to_common(self) -> None:
+        s = _settings(api_key="sk-common", base_url="https://common/v1")
+        assert s.resolved_embedding_api_key() == "sk-common"
+        assert s.resolved_embedding_base_url() == "https://common/v1"
+
+    def test_embeddings_factory_fake(self) -> None:
+        from agent_workbench.infrastructure.embeddings import FakeEmbeddings, get_embeddings
+
+        emb = get_embeddings(_settings(app_env="test", embedding_model="text-embedding-3-small"))
+        assert isinstance(emb, FakeEmbeddings)
+
+    def test_embeddings_factory_real_with_key_url(self) -> None:
+        from agent_workbench.infrastructure.embeddings import get_embeddings
+
+        emb = get_embeddings(
+            _settings(
+                app_env="dev",
+                embedding_model="text-embedding-3-small",
+                api_key="sk-emb",
+                base_url="https://gw.example/v1",
+            )
+        )
+        # 构造期不联网
+        assert emb is not None
+        assert not isinstance(emb, type(get_embeddings(_settings(app_env="test"))))

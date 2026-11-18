@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """评测 CLI：`uv run python evals/run_evaluation.py [--mode single|multi|compare]`。
 
-默认使用确定性替身模型（离线可复现）；`--json-out` 写出完整结果。
-`compare` 模式同时跑 single 与 multi 并输出 A/B 对比表。
+- 默认按 `.env` 构造真实模型（未配置则自动替身）；
+- `--scripted` 强制确定性替身（离线可复现）；
+- `--json-out` 写出完整结果；`compare` 输出 A/B Markdown 表。
 """
 
 from __future__ import annotations
@@ -11,6 +12,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 # 允许直接以脚本运行：把仓库根与 src 加入 path
 _ROOT = Path(__file__).resolve().parents[1]
@@ -49,6 +51,11 @@ def _build_parser() -> argparse.ArgumentParser:
         default=2,
         help="Supervisor 回修上限",
     )
+    p.add_argument(
+        "--scripted",
+        action="store_true",
+        help="强制使用确定性替身（忽略 .env 中的真实模型）",
+    )
     return p
 
 
@@ -65,26 +72,30 @@ def main(argv: list[str] | None = None) -> int:
         compare_modes,
         format_comparison_markdown,
     )
-    from agent_workbench.infrastructure.llm import ScriptedChatModel
+    from agent_workbench.infrastructure.llm import ScriptedChatModel, get_chat_model
     from agent_workbench.main import build_default_registry
+    from config.settings import get_settings
 
     tasks = load_dataset(args.dataset)
     registry = build_default_registry()
 
-    def make_llm() -> ScriptedChatModel:
-        """每次新建替身，保证 single/multi 起点一致。"""
-        return ScriptedChatModel(scripted_responses=[])
+    def make_llm() -> Any:
+        """每次新建模型实例，保证 single/multi 起点一致。"""
+        if args.scripted:
+            return ScriptedChatModel(scripted_responses=[])
+        return get_chat_model(get_settings())
 
     if args.mode == "compare":
         report = compare_modes(
             tasks,
-            make_llm,  # type: ignore[arg-type]
+            make_llm,
             registry,
             max_steps=args.max_steps,
             max_repair_attempts=args.max_repair_attempts,
         )
         payload = {
             "mode": "compare",
+            "scripted": bool(args.scripted),
             "single": report.single.model_dump(),
             "multi": report.multi.model_dump(),
             "deltas": report.deltas,
@@ -116,6 +127,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         payload = {
             "mode": args.mode,
+            "scripted": bool(args.scripted),
             "metrics": metrics.model_dump(),
             "runs": [r.model_dump() for r in runs],
         }
@@ -123,16 +135,10 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.json_out is not None:
         args.json_out.parent.mkdir(parents=True, exist_ok=True)
-        if args.mode == "compare":
-            args.json_out.write_text(
-                json.dumps(payload, ensure_ascii=False, indent=2),
-                encoding="utf-8",
-            )
-        else:
-            args.json_out.write_text(
-                json.dumps(payload, ensure_ascii=False, indent=2),
-                encoding="utf-8",
-            )
+        args.json_out.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
         print(f"已写入 {args.json_out}", file=sys.stderr)
     return 0
 

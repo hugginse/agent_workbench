@@ -27,6 +27,56 @@ uv run pytest
 
 默认使用确定性替身 `FakeEmbeddings`（离线可复现）。**切换真实 embedding 后必须清空 `.data/` 并重建向量索引**（否则伪向量与真实向量空间不一致，检索结果无效）。
 
+## 评测结果（Agent Harness A/B）
+
+数据集：`evals/datasets/tasks_v1.jsonl`（36 条合成任务，含 6 条 `should_fail`）。  
+完整指标定义与限制见 [`evals/README.md`](evals/README.md)。
+
+### 1) 替身模式（离线可复现）
+
+- **环境：** `ScriptedChatModel` + 默认 registry；`--scripted`；`max_steps=8`，`max_repair_attempts=2`
+- **运行日期：** 2026-11-17
+- **限制：** 仅验证管线与相对结构，**不能**代表真实模型效果
+
+| 指标 | single | multi | Δ (multi−single) |
+|---|---:|---:|---:|
+| 任务通过率 | 0.8333 | 1.0000 | +0.1667 |
+| 逐步成功率 | 1.0000 | 1.0000 | +0.0000 |
+| 回修率 | 0.0000 | 1.0000 | +1.0000 |
+| 平均回修 | 0.0 | 2.0 | +2.0 |
+| 平均 token（估算） | 71.94 | 1226.42 | +1154.47 |
+| token 合计（估算） | 2590 | 44151 | +41561 |
+| 延迟 p50 (ms) | 1.29 | 4.49 | +3.19 |
+| 延迟 p95 (ms) | 1.71 | 4.67 | +2.96 |
+| 幻觉率 | 0.0000 | 0.0000 | +0.0000 |
+
+### 2) 真实模型（全量 36×2）
+
+- **环境：** `APP_ENV=dev`；`CHAT_MODEL=mimo-v2.6-flash`（`BASE_URL` 见 `.env`，已连通验证）；Embedding 配置为 `BAAI/bge-m3`（本评测未走 RAG 索引）
+- **参数：** `--mode compare`，`max_steps=8`，`max_repair_attempts=2`，**未截断数据集**
+- **运行日期：** 2026-11-18；串行执行，全量约数小时
+- **token 为启发式估算**，非供应商账单；延迟为端到端 wall-clock
+
+| 指标 | single | multi | Δ (multi−single) |
+|---|---:|---:|---:|
+| 任务通过率 | 0.8056 | 0.9722 | +0.1666 |
+| 逐步成功率 | 1.0000 | 0.9722 | −0.0278 |
+| 回修率 | 0.0000 | 0.5000 | +0.5000 |
+| 平均回修 | 0.0 | 0.9444 | +0.9444 |
+| 平均 token（估算） | 1618.61 | 28557.19 | +26938.58 |
+| token 合计（估算） | 58270 | 1028059 | +969789 |
+| 延迟 p50 (ms) | 18619 | 300155 | +281536 |
+| 延迟 p95 (ms) | 104630 | 1228399 | +1123769 |
+| 引用支撑率 | 0.3333 (n=3) | 0.3000 (n=10) | −0.0333 |
+| 幻觉率 | 0.6667 | 0.7000 | +0.0333 |
+
+**解读（摘要）：**
+
+- 两种模式下 **multi 通过率均高于 single**（替身 +0.167，真实 +0.167），Supervisor 回修对 `should_fail`/质量更有利。
+- 真实模型下 multi **token 与延迟显著更高**（多 Agent 多次调用 + 回修），符合预期权衡。
+- 真实幻觉率偏高、支撑率样本少：默认 judge 未强制 RAG 引用；无检索闭环时 `[n]` 无法核验。属指标口径限制，见 `evals/README.md`。
+- **替身数字仅作管线回归**；面试/对外应引用上表真实数字并注明环境与日期。
+
 ## 阶段进度
 
 - [x] Phase 0 #1 `docs: add project plan and development contract`
@@ -76,6 +126,6 @@ uv run pytest
 - [x] Phase 5 #30 `feat: add hallucination and token cost metrics`
 - [x] Phase 5 #31 `feat: add single agent vs multi agent comparison mode`
 - [x] Phase 5 #32 `test: cover evaluation harness with scripted model`
-- [ ] Phase 5 #33 `docs: embed evaluation results and ablation table in README`
+- [x] Phase 5 #33 `docs: embed evaluation results and ablation table in README`
 
-**Tag:** `v0.6.0-phase5`（Phase 5 完成后打）
+**Tag:** `v0.6.0-phase5` — Phase 5 已完成
